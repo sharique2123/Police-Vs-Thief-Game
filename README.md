@@ -22,6 +22,12 @@ with a "pass the device" prompt so the incoming player doesn't see the
 outgoing player's position. See **Scoring** below for how the winner is
 decided.
 
+**Online · 2 Player** — play a friend on their own device. One player picks
+**Host room**, enters a name and gets a 5-character room code; the other picks
+**Join room**, enters a name plus that code. Same two-round format and scoring
+as offline mode, but there is no pass-the-device blur since each player has
+their own screen. See **Online play** below for how it works.
+
 Click a highlighted tile on your turn to move there. Each turn you also
 have **8 seconds to act** — if the clock runs out, a random legal move is
 made for you automatically, so no one can stall the whole match out.
@@ -58,7 +64,11 @@ with a real breadth-first search over the grid, not just straight-line
 math — so the logic is ready to extend with walls or obstacles later
 without changing how movement or vision is calculated.
 
-### Powers (once each per match)
+### Powers (rechargeable)
+
+Every power comes back **5 moves after you use it** — five of your own moves,
+counted after the turn you used it on. The dashboard shows each item as
+`ready` or `recharging · N`. This applies in all three modes.
 
 **Thief**
 - **Stopper** — freezes the Police for their next turn. Costs your turn to use.
@@ -86,6 +96,26 @@ one of their two powers. Two different kinds of pause protect that:
 - Outside those radii, the opposing token is simply not drawn — you're
   playing on partial information, same as the AI is.
 
+## Online play
+
+Online mode is peer-to-peer over WebRTC using [PeerJS](https://peerjs.com/)
+(loaded from a CDN — still no build step or server of your own). The room code
+is the host's PeerJS id.
+
+- The **host's** browser runs the whole game (same engine as offline) and is the
+  source of truth; the **guest's** browser sends its clicks and renders what the
+  host sends back.
+- The host only sends the guest the opponent's position when it is inside the
+  guest's vision radius, so fog of war holds up online.
+- The 8-second turn clock and 5-minute match clock run on the host and are
+  mirrored to the guest. Rounds and scoring work as in offline mode.
+- If either player disconnects mid-match, the match ends and the other player
+  returns to the menu.
+
+Needs an internet connection (for PeerJS and its free signaling server). Some
+strict networks/NATs block direct WebRTC connections; the default setup has no
+TURN relay, so in rare cases two players may be unable to connect.
+
 ## Project structure
 
 ```
@@ -95,7 +125,8 @@ police-vs-thief-game/
 │   └── style.css        # dark tactical theme, layout, board styling
 ├── js/
 │   ├── pathfinding.js   # BFS shortest-distance / shortest-path / vision helpers
-│   └── game.js          # game state, rendering, turn loop, AI, timer
+│   ├── game.js          # game state, rendering, turn loop, AI, timer
+│   └── online.js        # online mode: host/join, PeerJS networking, snapshots
 ├── LICENSE
 └── README.md
 ```
@@ -122,8 +153,6 @@ distance from the Police.
 
 - Add wall/obstacle tiles — `pathfinding.js` is already obstacle-ready,
   you'd only need to make `neighborsOf()` skip blocked cells.
-- Two-player hot-seat mode (no AI, pass the device).
-- Difficulty levels by tuning AI power-usage thresholds in `game.js`.
 - Persist match results with `localStorage` for a simple win/loss record.
 
 ## License

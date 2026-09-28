@@ -25,6 +25,7 @@
     <section class="panel menu" id="menu-screen">
       <h1>Choose a mode</h1>
       <p class="lede">Same 10×10 board, same shortest-distance rules — pick who (or what) you're playing against.</p>
+      <p class="menu-notice" id="menu-notice" hidden></p>
 
       <div class="mode-pick">
         <button class="mode-card" data-mode="ai">
@@ -36,6 +37,11 @@
           <span class="mode-icon thief-ink">◈</span>
           <span class="mode-name">Offline · 2 Player</span>
           <span class="mode-desc">Pass the device. Each of you plays Police once — fastest capture wins.</span>
+        </button>
+        <button class="mode-card" data-mode="online">
+          <span class="mode-icon good-ink">◉</span>
+          <span class="mode-name">Online · 2 Player</span>
+          <span class="mode-desc">Host a room or join with a code. Play a friend on their own device.</span>
         </button>
       </div>
     </section>
@@ -91,6 +97,70 @@
       </div>
     </section>
 
+    <!-- Online: host or join -->
+    <section class="panel setup" id="online-menu-screen" hidden>
+      <h1>Online · 2 Player</h1>
+      <p class="lede">One of you hosts a room and shares the code; the other joins with it. Same two rounds as offline — you each play Police once, fastest capture wins.</p>
+
+      <div class="role-pick">
+        <button class="role-card" id="online-host-btn">
+          <span class="role-icon good-ink">＋</span>
+          <span class="role-name">Host room</span>
+          <span class="role-desc">Enter your name, get a room code to share</span>
+        </button>
+        <button class="role-card" id="online-join-btn">
+          <span class="role-icon good-ink">→</span>
+          <span class="role-name">Join room</span>
+          <span class="role-desc">Enter your name and the host's room code</span>
+        </button>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn-ghost" id="online-back-btn">← Back</button>
+      </div>
+    </section>
+
+    <!-- Online: host -->
+    <section class="panel setup" id="online-host-screen" hidden>
+      <h1>Host a room</h1>
+      <div id="host-form">
+        <p class="lede">Enter your name, then create the room and send the code to your opponent.</p>
+        <div class="name-row single">
+          <label>Your name <input type="text" id="host-name" maxlength="16" placeholder="Host" /></label>
+        </div>
+        <p class="section-label">Round 1 roles</p>
+        <button class="btn-ghost role-toggle-btn" id="host-role-btn">⇄ You = Police · Opponent = Thief</button>
+        <div class="setup-actions">
+          <button class="btn-ghost" id="host-back-btn">← Back</button>
+          <button class="btn-start" id="host-create-btn">Create room</button>
+        </div>
+      </div>
+      <div id="host-lobby" hidden>
+        <p class="lede">Share this code with your opponent. The match starts as soon as they join.</p>
+        <p class="room-code" id="room-code">-----</p>
+        <button class="btn-ghost" id="copy-code-btn">Copy code</button>
+        <div class="setup-actions">
+          <button class="btn-ghost" id="host-cancel-btn">Cancel room</button>
+        </div>
+      </div>
+      <p class="setup-hint" id="host-status"></p>
+    </section>
+
+    <!-- Online: join -->
+    <section class="panel setup" id="online-join-screen" hidden>
+      <h1>Join a room</h1>
+      <p class="lede">Enter your name and the room code your host gave you.</p>
+      <div class="name-row">
+        <label>Your name <input type="text" id="join-name" maxlength="16" placeholder="Guest" /></label>
+        <label>Room code <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" class="code-input" /></label>
+      </div>
+      <div class="setup-actions">
+        <button class="btn-ghost" id="join-back-btn">← Back</button>
+        <button class="btn-start" id="join-go-btn">Join room</button>
+      </div>
+      <p class="setup-hint" id="join-status"></p>
+    </section>
+
     <!-- Game screen -->
     <section class="game-area" id="game-screen" hidden>
 
@@ -105,13 +175,13 @@
 
         <div class="dash-block">
           <h2 class="police-ink" id="police-label">Police</h2>
-          <p class="dash-sub">Items remaining</p>
+          <p class="dash-sub">Items (recharge after 5 moves)</p>
           <ul class="item-list" id="police-items"></ul>
         </div>
 
         <div class="dash-block">
           <h2 class="thief-ink" id="thief-label">Thief</h2>
-          <p class="dash-sub">Items remaining</p>
+          <p class="dash-sub">Items (recharge after 5 moves)</p>
           <ul class="item-list" id="thief-items"></ul>
         </div>
 
@@ -182,7 +252,11 @@
     </div>
   </div>
 
+  <!-- PeerJS: peer-to-peer connection for Online mode (jsDelivr is the fallback host) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>window.Peer || document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');</script>
   <script src="js/pathfinding.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/online.js"></script>
 </body>
 </html>
