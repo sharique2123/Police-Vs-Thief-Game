@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Police vs Thief — Grid Pursuit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◎</span>
+        <span class="brand-text">GRID PURSUIT <span class="brand-sub">police / thief</span></span>
+      </div>
+      <div class="clock" id="clock">05:00</div>
+    </header>
+
+    <!-- Main menu -->
+    <section class="panel menu" id="menu-screen">
+      <h1>Choose a mode</h1>
+      <p class="lede">Same 10×10 board, same shortest-distance rules — pick who (or what) you're playing against.</p>
+
+      <div class="mode-pick">
+        <button class="mode-card" data-mode="ai">
+          <span class="mode-icon police-ink">◎</span>
+          <span class="mode-name">Play vs AI</span>
+          <span class="mode-desc">Pick a side and a difficulty. The AI plans with shortest-path search.</span>
+        </button>
+        <button class="mode-card" data-mode="offline">
+          <span class="mode-icon thief-ink">◈</span>
+          <span class="mode-name">Offline · 2 Player</span>
+          <span class="mode-desc">Pass the device. Each of you plays Police once — fastest capture wins.</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- AI setup -->
+    <section class="panel setup" id="ai-setup-screen" hidden>
+      <h1>Set up your match</h1>
+      <p class="lede">Pick your side and how sharp the AI should be.</p>
+
+      <div class="role-pick">
+        <button class="role-card" data-role="thief">
+          <span class="role-icon thief-ink">▲</span>
+          <span class="role-name">Play as Thief</span>
+          <span class="role-desc">1 step / turn · sees 5 tiles · Stopper + Teleport</span>
+        </button>
+        <button class="role-card" data-role="police">
+          <span class="role-icon police-ink">■</span>
+          <span class="role-name">Play as Police</span>
+          <span class="role-desc">2 steps / turn · sees 3 tiles · Indicator + Jump</span>
+        </button>
+      </div>
+
+      <p class="section-label">Difficulty</p>
+      <div class="diff-row">
+        <button class="diff-card" data-diff="easy"><strong>Easy</strong><span>Slower, looser AI</span></button>
+        <button class="diff-card" data-diff="intermediate"><strong>Intermediate</strong><span>Balanced reactions</span></button>
+        <button class="diff-card" data-diff="hard"><strong>Hard</strong><span>Fast, precise AI</span></button>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn-ghost" id="ai-back-btn">← Back</button>
+        <button class="btn-start" id="ai-start-btn" disabled>Start Pursuit</button>
+      </div>
+      <p class="setup-hint" id="ai-setup-hint">Pick a side and a difficulty to continue.</p>
+    </section>
+
+    <!-- Offline setup -->
+    <section class="panel setup" id="offline-setup-screen" hidden>
+      <h1>Two-player match</h1>
+      <p class="lede">You'll each play Police once, in two short rounds. Whoever catches the thief faster wins overall — if neither of you catches, it's a draw.</p>
+
+      <div class="name-row">
+        <label>Player 1 name <input type="text" id="p1-name" maxlength="16" placeholder="Player 1" /></label>
+        <label>Player 2 name <input type="text" id="p2-name" maxlength="16" placeholder="Player 2" /></label>
+      </div>
+
+      <p class="section-label">Round 1 roles</p>
+      <button class="btn-ghost role-toggle-btn" id="swap-roles-btn">⇄ Player 1 = Police · Player 2 = Thief</button>
+
+      <div class="setup-actions">
+        <button class="btn-ghost" id="offline-back-btn">← Back</button>
+        <button class="btn-start" id="offline-start-btn">Start Round 1</button>
+      </div>
+    </section>
+
+    <!-- Game screen -->
+    <section class="game-area" id="game-screen" hidden>
+
+      <p class="round-banner" id="round-banner" hidden></p>
+
+      <aside class="dash">
+
+        <div class="dash-block">
+          <h2>Time remaining</h2>
+          <p class="dash-clock" id="dash-clock">05:00</p>
+        </div>
+
+        <div class="dash-block">
+          <h2 class="police-ink" id="police-label">Police</h2>
+          <p class="dash-sub">Items remaining</p>
+          <ul class="item-list" id="police-items"></ul>
+        </div>
+
+        <div class="dash-block">
+          <h2 class="thief-ink" id="thief-label">Thief</h2>
+          <p class="dash-sub">Items remaining</p>
+          <ul class="item-list" id="thief-items"></ul>
+        </div>
+
+        <div class="dash-block">
+          <h2>Proximity compass</h2>
+          <div class="compass" id="compass">
+            <div class="compass-dial" id="compass-dial"></div>
+            <p class="compass-label" id="compass-label">—</p>
+          </div>
+        </div>
+
+      </aside>
+
+      <div class="board-col">
+        <div class="board" id="board"></div>
+        <p class="hint" id="hint">Click a lit tile to move.</p>
+      </div>
+
+      <aside class="hud">
+
+        <div class="hud-block">
+          <h2>Status</h2>
+          <p id="turn-indicator" class="turn-indicator">—</p>
+          <p id="turn-timer" class="turn-timer" hidden>⏱ 8s to act</p>
+          <p id="indicator-readout" class="indicator-readout" hidden></p>
+          <p id="log" class="log">The chase begins.</p>
+        </div>
+
+        <div class="hud-block">
+          <h2>Powers</h2>
+          <div class="power-row" id="power-row"></div>
+        </div>
+
+        <div class="hud-block legend">
+          <h2>Legend</h2>
+          <ul>
+            <li><span class="dot police-ink"></span> Police</li>
+            <li><span class="dot thief-ink"></span> Thief</li>
+            <li><span class="dot range-ink"></span> Vision reach</li>
+          </ul>
+        </div>
+
+      </aside>
+    </section>
+
+    <!-- Round result (offline, between round 1 and 2) -->
+    <section class="panel result" id="round-result-screen" hidden>
+      <h1 id="round-result-title">Round 1 complete</h1>
+      <p id="round-result-desc" class="lede">—</p>
+      <button class="btn-start" id="next-round-btn">Start Round 2</button>
+    </section>
+
+    <!-- Final result -->
+    <section class="panel result" id="result-screen" hidden>
+      <h1 id="result-title">—</h1>
+      <p id="result-desc" class="lede">—</p>
+      <div class="result-details" id="result-details" hidden></div>
+      <button class="btn-start" id="restart-btn">Back to menu</button>
+    </section>
+
+  </div>
+
+  <div class="pass-overlay" id="pass-overlay" hidden>
+    <div class="pass-card">
+      <p class="pass-label">Pass the device to</p>
+      <p class="pass-name" id="pass-name">—</p>
+      <p class="pass-count" id="pass-count">3</p>
+    </div>
+  </div>
+
+  <script src="js/pathfinding.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
