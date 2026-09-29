@@ -18,7 +18,10 @@
         <span class="brand-mark">◎</span>
         <span class="brand-text">GRID PURSUIT <span class="brand-sub">police / thief</span></span>
       </div>
-      <div class="clock" id="clock">05:00</div>
+      <div class="topbar-right">
+        <button class="sound-toggle" id="sound-toggle-btn" aria-label="Mute sound">🔊</button>
+        <div class="clock" id="clock">05:00</div>
+      </div>
     </header>
 
     <!-- Main menu -->
@@ -64,6 +67,24 @@
         </button>
       </div>
 
+      <p class="section-label">Your character</p>
+      <div class="avatar-pick">
+        <div class="avatar-picker" id="ai-avatar-picker">
+          <div class="avatar-row">
+            <button type="button" class="avatar-arrow" data-dir="-1" aria-label="Previous character">‹</button>
+            <div class="avatar-display">
+              <span class="avatar-emoji">🐱</span>
+            </div>
+            <button type="button" class="avatar-arrow" data-dir="1" aria-label="Next character">›</button>
+          </div>
+          <p class="avatar-name">Cat</p>
+          <div class="avatar-dots"></div>
+        </div>
+      </div>
+      <div class="name-row single">
+        <label>Your name <input type="text" id="ai-player-name" maxlength="16" placeholder="You" /></label>
+      </div>
+
       <p class="section-label">Difficulty</p>
       <div class="diff-row">
         <button class="diff-card" data-diff="easy"><strong>Easy</strong><span>Slower, looser AI</span></button>
@@ -83,9 +104,41 @@
       <h1>Two-player match</h1>
       <p class="lede">You'll each play Police once, in two short rounds. Whoever catches the thief faster wins overall — if neither of you catches, it's a draw.</p>
 
-      <div class="name-row">
-        <label>Player 1 name <input type="text" id="p1-name" maxlength="16" placeholder="Player 1" /></label>
-        <label>Player 2 name <input type="text" id="p2-name" maxlength="16" placeholder="Player 2" /></label>
+      <div class="player-pick-row">
+        <div class="player-pick">
+          <label class="player-pick-label">Player 1</label>
+          <div class="avatar-pick">
+            <div class="avatar-picker" id="p1-avatar-picker">
+          <div class="avatar-row">
+            <button type="button" class="avatar-arrow" data-dir="-1" aria-label="Previous character">‹</button>
+            <div class="avatar-display">
+              <span class="avatar-emoji">🐱</span>
+            </div>
+            <button type="button" class="avatar-arrow" data-dir="1" aria-label="Next character">›</button>
+          </div>
+          <p class="avatar-name">Cat</p>
+          <div class="avatar-dots"></div>
+        </div>
+          </div>
+          <input type="text" id="p1-name" maxlength="16" placeholder="Player 1" />
+        </div>
+        <div class="player-pick">
+          <label class="player-pick-label">Player 2</label>
+          <div class="avatar-pick">
+            <div class="avatar-picker" id="p2-avatar-picker">
+          <div class="avatar-row">
+            <button type="button" class="avatar-arrow" data-dir="-1" aria-label="Previous character">‹</button>
+            <div class="avatar-display">
+              <span class="avatar-emoji">🐱</span>
+            </div>
+            <button type="button" class="avatar-arrow" data-dir="1" aria-label="Next character">›</button>
+          </div>
+          <p class="avatar-name">Cat</p>
+          <div class="avatar-dots"></div>
+        </div>
+          </div>
+          <input type="text" id="p2-name" maxlength="16" placeholder="Player 2" />
+        </div>
       </div>
 
       <p class="section-label">Round 1 roles</p>
@@ -125,6 +178,20 @@
       <h1>Host a room</h1>
       <div id="host-form">
         <p class="lede">Enter your name, then create the room and send the code to your opponent.</p>
+        <p class="section-label">Your character</p>
+        <div class="avatar-pick">
+          <div class="avatar-picker" id="host-avatar-picker">
+          <div class="avatar-row">
+            <button type="button" class="avatar-arrow" data-dir="-1" aria-label="Previous character">‹</button>
+            <div class="avatar-display">
+              <span class="avatar-emoji">🐱</span>
+            </div>
+            <button type="button" class="avatar-arrow" data-dir="1" aria-label="Next character">›</button>
+          </div>
+          <p class="avatar-name">Cat</p>
+          <div class="avatar-dots"></div>
+        </div>
+        </div>
         <div class="name-row single">
           <label>Your name <input type="text" id="host-name" maxlength="16" placeholder="Host" /></label>
         </div>
@@ -150,6 +217,20 @@
     <section class="panel setup" id="online-join-screen" hidden>
       <h1>Join a room</h1>
       <p class="lede">Enter your name and the room code your host gave you.</p>
+      <p class="section-label">Your character</p>
+      <div class="avatar-pick">
+        <div class="avatar-picker" id="join-avatar-picker">
+          <div class="avatar-row">
+            <button type="button" class="avatar-arrow" data-dir="-1" aria-label="Previous character">‹</button>
+            <div class="avatar-display">
+              <span class="avatar-emoji">🐱</span>
+            </div>
+            <button type="button" class="avatar-arrow" data-dir="1" aria-label="Next character">›</button>
+          </div>
+          <p class="avatar-name">Cat</p>
+          <div class="avatar-dots"></div>
+        </div>
+      </div>
       <div class="name-row">
         <label>Your name <input type="text" id="join-name" maxlength="16" placeholder="Guest" /></label>
         <label>Room code <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" class="code-input" /></label>
@@ -256,6 +337,7 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>window.Peer || document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');</script>
   <script src="js/pathfinding.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
   <script src="js/online.js"></script>
 </body>

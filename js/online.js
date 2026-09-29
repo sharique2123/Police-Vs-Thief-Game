@@ -118,6 +118,7 @@ function hostCreateRoom() {
   leaveOnline();
   net.role = "host";
   net.name = cleanName(hostNameInput.value, "Host");
+  net.avatar = hostAvatarPicker.get();
   createHostPeer(0);
 }
 
@@ -168,10 +169,12 @@ function startOnlineRound(round) {
   const hostIsPolice = round === 1 ? net.hostIsPolice : !net.hostIsPolice;
   const policeName = hostIsPolice ? net.name : net.oppName;
   const thiefName = hostIsPolice ? net.oppName : net.name;
+  const policeAvatar = hostIsPolice ? net.avatar : net.oppAvatar;
+  const thiefAvatar = hostIsPolice ? net.oppAvatar : net.avatar;
   // Tell the guest first so it has a board ready before the first snapshot.
-  netSend({ t: "roundStart", round, policeName, thiefName, myRole: hostIsPolice ? "thief" : "police" });
+  netSend({ t: "roundStart", round, policeName, thiefName, policeAvatar, thiefAvatar, myRole: hostIsPolice ? "thief" : "police" });
   showScreen("game");
-  startGame({ mode: "online", round, policeName, thiefName, myRole: hostIsPolice ? "police" : "thief" });
+  startGame({ mode: "online", round, policeName, thiefName, policeAvatar, thiefAvatar, myRole: hostIsPolice ? "police" : "thief" });
 }
 
 // Builds what the guest is allowed to know. An out-of-sight opponent is null.
@@ -213,6 +216,7 @@ function hostHandle(msg) {
       net.started = true;
       net.oppName = cleanName(msg.name, "Player 2");
       if (net.oppName.toLowerCase() === net.name.toLowerCase()) net.oppName += " (2)";
+      net.oppAvatar = Number.isInteger(msg.avatar) ? msg.avatar : 0;
       offlineMatch = { history: [] }; // same two-round bookkeeping as offline mode
       startOnlineRound(1);
       break;
@@ -241,6 +245,7 @@ function joinRoom() {
   leaveOnline();
   net.role = "guest";
   net.name = cleanName(joinNameInput.value, "Guest");
+  net.avatar = joinAvatarPicker.get();
   setStatus(joinStatusEl, "Connecting…", null);
 
   const peer = new Peer();
@@ -269,7 +274,7 @@ function joinRoom() {
     conn.on("open", () => {
       done = true;
       clearTimeout(timer);
-      conn.send({ t: "hello", name: net.name });
+      conn.send({ t: "hello", name: net.name, avatar: net.avatar });
       setStatus(joinStatusEl, "Connected — waiting for the host to start…", "ok");
     });
     wireConnection(conn);
@@ -279,6 +284,7 @@ function joinRoom() {
 function setupGuestRound(m) {
   showScreen("game");
   resetClockDisplay();
+  resetSoundBaseline();
   state = {
     mode: "online",
     myRole: m.myRole,
@@ -287,6 +293,8 @@ function setupGuestRound(m) {
     thiefName: m.thiefName,
     police: null,
     thief: null,
+    policeAvatar: m.policeAvatar,
+    thiefAvatar: m.thiefAvatar,
     turn: "thief",
     secondsLeft: MATCH_SECONDS,
     turnSecondsLeft: TURN_SECONDS,

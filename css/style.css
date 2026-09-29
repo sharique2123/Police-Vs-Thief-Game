@@ -76,6 +76,24 @@ body {
   margin-left: 4px;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sound-toggle {
+  font-size: 1.1rem;
+  line-height: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 11px;
+  cursor: pointer;
+  color: var(--text);
+}
+.sound-toggle:hover { border-color: var(--thief); }
+
 .clock {
   font-family: var(--font-display);
   font-size: 1.4rem;
@@ -197,6 +215,117 @@ body {
 .setup-hint.ok { color: var(--good); }
 .setup-hint.err { color: var(--bad); }
 .good-ink { color: var(--good); }
+
+/* ---------- avatar picker ---------- */
+
+.avatar-pick {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 6px;
+}
+
+.avatar-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar-arrow {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 1.1rem;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.avatar-arrow:hover { border-color: var(--thief); color: var(--thief); }
+
+.avatar-display {
+  width: 90px;
+  height: 90px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.6rem;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.avatar-display:active { cursor: grabbing; }
+
+.avatar-name {
+  margin: 8px 0 6px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.avatar-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.avatar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.avatar-dot.active { background: var(--thief); }
+
+/* ---------- offline: per-player avatar + name ---------- */
+
+.player-pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+@media (max-width: 560px) {
+  .player-pick-row { grid-template-columns: 1fr; }
+}
+
+.player-pick { display: flex; flex-direction: column; align-items: center; }
+
+.player-pick-label {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.player-pick input {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.player-pick input:focus { outline: none; border-color: var(--thief); }
 
 /* ---------- online lobby ---------- */
 

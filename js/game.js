@@ -28,6 +28,24 @@ const DIFFICULTIES = {
   hard: { thinkMs: [350, 650], randomMoveChance: 0.0, powerSkill: 1.0 },
 };
 
+// The same 5 characters work as your avatar whether you end up Police or
+// Thief — picked once at setup, shown on the board token from then on.
+const CHARACTERS = [
+  { id: "cat", emoji: "🐱", name: "Cat" },
+  { id: "fox", emoji: "🦊", name: "Fox" },
+  { id: "penguin", emoji: "🐧", name: "Penguin" },
+  { id: "bear", emoji: "🐻", name: "Bear" },
+  { id: "panda", emoji: "🐼", name: "Panda" },
+];
+const AI_AVATAR = "🤖"; // the AI opponent always shows this, never a player pick
+
+function charEmoji(index) {
+  return CHARACTERS[index] ? CHARACTERS[index].emoji : "❓";
+}
+function dashLabel(name, avatarIndex) {
+  return avatarIndex != null ? `${charEmoji(avatarIndex)} ${name}` : name;
+}
+
 let state = null;
 let offlineMatch = null; // { history: [{round, policeName, thiefName, captured, elapsedSeconds}] }
 let clockIntervalId = null;
@@ -35,7 +53,7 @@ let clockIntervalId = null;
 // Online play state (filled in by online.js). role: "host" | "guest" | null.
 // The host runs the whole game; the guest is a thin client that renders
 // snapshots and sends its clicks to the host.
-const net = { role: null, peer: null, conn: null, name: "", oppName: "", hostIsPolice: true, started: false, finished: false };
+const net = { role: null, peer: null, conn: null, name: "", oppName: "", avatar: 0, oppAvatar: 0, hostIsPolice: true, started: false, finished: false };
 function isHost() { return net.role === "host"; }
 function isGuest() { return net.role === "guest"; }
 
@@ -71,6 +89,131 @@ const resultTitle = document.getElementById("result-title");
 const resultDesc = document.getElementById("result-desc");
 const resultDetailsEl = document.getElementById("result-details");
 const passOverlayEl = document.getElementById("pass-overlay");
+const soundToggleBtn = document.getElementById("sound-toggle-btn");
+
+// ---------- sound ----------
+
+function initSoundToggle() {
+  let muted = false;
+  try { muted = localStorage.getItem("gridpursuit-muted") === "1"; } catch (e) {}
+  Sound.setMuted(muted);
+  refreshSoundToggle();
+  soundToggleBtn.addEventListener("click", () => {
+    Sound.setMuted(!Sound.isMuted());
+    try { localStorage.setItem("gridpursuit-muted", Sound.isMuted() ? "1" : "0"); } catch (e) {}
+    refreshSoundToggle();
+  });
+}
+function refreshSoundToggle() {
+  soundToggleBtn.textContent = Sound.isMuted() ? "🔇" : "🔊";
+  soundToggleBtn.setAttribute("aria-label", Sound.isMuted() ? "Unmute sound" : "Mute sound");
+}
+initSoundToggle();
+
+// ---------- avatar picker (shared by AI / offline / online setup screens) ----------
+// Swipe left/right (or tap the arrows) through the 5 characters. Each
+// instance is fully independent — every setup screen that needs one gets
+// its own, wired to its own DOM id.
+function initAvatarPicker(rootId, startIndex = 0) {
+  const root = document.getElementById(rootId);
+  const emojiEl = root.querySelector(".avatar-emoji");
+  const nameEl = root.querySelector(".avatar-name");
+  const dotsEl = root.querySelector(".avatar-dots");
+  let index = startIndex;
+
+  function paint() {
+    const c = CHARACTERS[index];
+    emojiEl.textContent = c.emoji;
+    nameEl.textContent = c.name;
+    dotsEl.innerHTML = CHARACTERS.map(
+      (_, i) => `<span class="avatar-dot${i === index ? " active" : ""}"></span>`
+    ).join("");
+  }
+  function step(dir) {
+    index = (index + dir + CHARACTERS.length) % CHARACTERS.length;
+    paint();
+  }
+
+  root.querySelectorAll(".avatar-arrow").forEach((btn) => {
+    btn.addEventListener("click", () => step(Number(btn.dataset.dir)));
+  });
+
+  // Swipe (pointer drag) support, in addition to the arrow buttons.
+  const display = root.querySelector(".avatar-display");
+  let dragStartX = null;
+  display.addEventListener("pointerdown", (e) => {
+    dragStartX = e.clientX;
+  });
+  display.addEventListener("pointerup", (e) => {
+    if (dragStartX === null) return;
+    const dx = e.clientX - dragStartX;
+    dragStartX = null;
+    const SWIPE_THRESHOLD = 30;
+    if (dx > SWIPE_THRESHOLD) step(-1);
+    else if (dx < -SWIPE_THRESHOLD) step(1);
+  });
+  display.addEventListener("pointercancel", () => {
+    dragStartX = null;
+  });
+
+  paint();
+  return {
+    get: () => index,
+    set: (i) => {
+      index = ((i % CHARACTERS.length) + CHARACTERS.length) % CHARACTERS.length;
+      paint();
+    },
+  };
+}
+
+const aiAvatarPicker = initAvatarPicker("ai-avatar-picker", 0);
+const p1AvatarPicker = initAvatarPicker("p1-avatar-picker", 0);
+const p2AvatarPicker = initAvatarPicker("p2-avatar-picker", 1);
+const hostAvatarPicker = initAvatarPicker("host-avatar-picker", 0);
+const joinAvatarPicker = initAvatarPicker("join-avatar-picker", 1);
+
+// Tracks the last-seen values of everything that can trigger a sound, so we
+// only ever fire on a genuine change (see maybePlaySounds). Reset whenever a
+// new game/round's state object is created, so its first render never diffs
+// against the previous match.
+let soundBaseline = null;
+function resetSoundBaseline() {
+  soundBaseline = null;
+}
+
+function maybePlaySounds() {
+  if (!state) return;
+  const cur = {
+    police: state.police ? state.police.join(",") : null,
+    thief: state.thief ? state.thief.join(",") : null,
+    turnSecondsLeft: state.turnSecondsLeft,
+    secondsLeft: state.secondsLeft,
+    over: state.over,
+    cd: { ...state.cd },
+  };
+  const base = soundBaseline;
+  soundBaseline = cur;
+  if (!base) return; // first render of a new game/round — nothing to diff against yet
+
+  if (!base.over && cur.over) {
+    const captured = !!(
+      state.police && state.thief && state.police[0] === state.thief[0] && state.police[1] === state.thief[1]
+    );
+    Sound.play(captured ? "capture" : "thiefWin");
+    return; // don't also fire move/item sounds for the winning instant
+  }
+  if (cur.over) return;
+
+  if (cur.police !== base.police && cur.police !== null && base.police !== null) Sound.play("move");
+  if (cur.thief !== base.thief && cur.thief !== null && base.thief !== null) Sound.play("move");
+  if (cur.turnSecondsLeft < base.turnSecondsLeft && cur.turnSecondsLeft > 0 && cur.turnSecondsLeft <= 3) {
+    Sound.play("turnTick");
+  }
+  if (base.secondsLeft > 30 && cur.secondsLeft <= 30) Sound.play("matchLow");
+  for (const kind of ["indicator", "jump", "stopper", "teleport"]) {
+    if (base.cd[kind] === 0 && cur.cd[kind] > 0) Sound.play(kind);
+  }
+}
 
 // ---------- centralized screen switching ----------
 // Every top-level screen toggle goes through here, always. This guarantees
@@ -176,8 +319,15 @@ function updateAiStartEnabled() {
 }
 
 document.getElementById("ai-start-btn").addEventListener("click", () => {
+  const name = (document.getElementById("ai-player-name").value || "You").trim().slice(0, 16);
   showScreen("game");
-  startGame({ mode: "ai", playerRole: chosenRole, difficulty: chosenDifficulty });
+  startGame({
+    mode: "ai",
+    playerRole: chosenRole,
+    difficulty: chosenDifficulty,
+    playerName: name,
+    playerAvatar: aiAvatarPicker.get(),
+  });
 });
 
 // ---- Offline setup screen ----
@@ -191,9 +341,14 @@ document.getElementById("swap-roles-btn").addEventListener("click", (e) => {
     : "⇄ Player 1 = Thief · Player 2 = Police";
 });
 
+let p1Avatar = 0;
+let p2Avatar = 0;
+
 document.getElementById("offline-start-btn").addEventListener("click", () => {
   const p1 = (document.getElementById("p1-name").value || "Player 1").trim().slice(0, 16);
   const p2 = (document.getElementById("p2-name").value || "Player 2").trim().slice(0, 16);
+  p1Avatar = p1AvatarPicker.get();
+  p2Avatar = p2AvatarPicker.get();
   offlineMatch = { history: [] };
   showScreen("game");
   startGame({
@@ -201,6 +356,8 @@ document.getElementById("offline-start-btn").addEventListener("click", () => {
     round: 1,
     policeName: p1IsPolice ? p1 : p2,
     thiefName: p1IsPolice ? p2 : p1,
+    policeAvatar: p1IsPolice ? p1Avatar : p2Avatar,
+    thiefAvatar: p1IsPolice ? p2Avatar : p1Avatar,
   });
 });
 
@@ -208,12 +365,14 @@ document.getElementById("next-round-btn").addEventListener("click", () => {
   if (isHost()) return startOnlineRound(2);
   const last = offlineMatch.history[0];
   showScreen("game");
-  // roles swap for round 2
+  // roles (and each player's own avatar) swap sides for round 2
   startGame({
     mode: "offline",
     round: 2,
     policeName: last.thiefName,
     thiefName: last.policeName,
+    policeAvatar: p1IsPolice ? p2Avatar : p1Avatar,
+    thiefAvatar: p1IsPolice ? p1Avatar : p2Avatar,
   });
 });
 
@@ -227,6 +386,7 @@ document.getElementById("restart-btn").addEventListener("click", () => {
   document.getElementById("ai-start-btn").disabled = true;
   document.getElementById("p1-name").value = "";
   document.getElementById("p2-name").value = "";
+  document.getElementById("ai-player-name").value = "";
   updateAiStartEnabled();
   backToMenu();
 });
@@ -239,6 +399,7 @@ function randomPos() {
 
 function startGame(config) {
   resetClockDisplay();
+  resetSoundBaseline();
   let police = randomPos();
   let thief = randomPos();
   while (sightDistance(police, thief) < 4) {
@@ -258,9 +419,11 @@ function startGame(config) {
     // set to RECHARGE_MOVES and ticks down as its owner makes moves.
     cd: { stopper: 0, teleport: 0, indicator: 0, jump: 0 },
     usedThisTurn: null, // power spent this turn — doesn't tick down on the turn it was used
+    policeAvatar: null, // index into CHARACTERS — null only for the AI's side in AI mode
+    thiefAvatar: null,
     log: "",
     distance: null, // only set on the online guest, from the host's snapshot
-    skipPoliceTurn: false,
+    extraTurn: false, // Stopper: the side that used it gets one more turn right after this one
     lastKnownThief: null, // AI memory when playing police
     indicatorReading: null, // persistent compass reading once revealed, e.g. "SE"
     locked: false, // true while a reveal or hand-off overlay is showing — input ignored
@@ -274,21 +437,30 @@ function startGame(config) {
     state.playerRole = config.playerRole;
     state.aiRole = config.playerRole === "police" ? "thief" : "police";
     state.difficulty = config.difficulty;
-    policeLabelEl.textContent = "Police";
-    thiefLabelEl.textContent = "Thief";
+    state.playerName = config.playerName;
+    if (config.playerRole === "police") state.policeAvatar = config.playerAvatar;
+    else state.thiefAvatar = config.playerAvatar;
+    policeLabelEl.textContent =
+      config.playerRole === "police" ? dashLabel(`${config.playerName} (you)`, config.playerAvatar) : `${AI_AVATAR} AI`;
+    thiefLabelEl.textContent =
+      config.playerRole === "thief" ? dashLabel(`${config.playerName} (you)`, config.playerAvatar) : `${AI_AVATAR} AI`;
     roundBannerEl.hidden = true;
   } else if (config.mode === "online") {
     state.round = config.round;
     state.policeName = config.policeName;
     state.thiefName = config.thiefName;
     state.myRole = config.myRole;
+    state.policeAvatar = config.policeAvatar;
+    state.thiefAvatar = config.thiefAvatar;
     applyRoundLabels();
   } else {
     state.round = config.round;
     state.policeName = config.policeName;
     state.thiefName = config.thiefName;
-    policeLabelEl.textContent = config.policeName;
-    thiefLabelEl.textContent = config.thiefName;
+    state.policeAvatar = config.policeAvatar;
+    state.thiefAvatar = config.thiefAvatar;
+    policeLabelEl.textContent = dashLabel(config.policeName, config.policeAvatar);
+    thiefLabelEl.textContent = dashLabel(config.thiefName, config.thiefAvatar);
     roundBannerEl.hidden = false;
     roundBannerEl.textContent = `Round ${state.round} of 2 — ${state.policeName} (Police) vs ${state.thiefName} (Thief)`;
   }
@@ -315,8 +487,8 @@ function startGame(config) {
 // Names on the dashboard + the round banner for online rounds (host and guest).
 function applyRoundLabels() {
   const you = (role) => (state.myRole === role ? " (you)" : "");
-  policeLabelEl.textContent = state.policeName + you("police");
-  thiefLabelEl.textContent = state.thiefName + you("thief");
+  policeLabelEl.textContent = dashLabel(state.policeName + you("police"), state.policeAvatar);
+  thiefLabelEl.textContent = dashLabel(state.thiefName + you("thief"), state.thiefAvatar);
   roundBannerEl.hidden = false;
   roundBannerEl.textContent = `Round ${state.round} of 2 — ${state.policeName} (Police) vs ${state.thiefName} (Thief)`;
 }
@@ -379,6 +551,7 @@ function tickCooldowns(role) {
 }
 
 function render() {
+  maybePlaySounds();
   for (const t of boardEl.children) {
     t.className = "tile";
     t.innerHTML = "";
@@ -410,16 +583,27 @@ function render() {
 
   if (drawPolice) {
     const [px, py] = state.police;
-    tileEl(px, py).innerHTML = `<div class="token police">P</div>`;
+    tileEl(px, py).innerHTML = `<div class="token police">${policeTokenGlyph()}</div>`;
   }
   if (drawThief) {
     const [tx, ty] = state.thief;
-    tileEl(tx, ty).innerHTML = `<div class="token thief">T</div>`;
+    tileEl(tx, ty).innerHTML = `<div class="token thief">${thiefTokenGlyph()}</div>`;
   }
 
   renderHud();
   renderDash();
   if (typeof sendSnapshot === "function") sendSnapshot(); // online host -> guest
+}
+
+// The AI opponent always shows the robot glyph; a human side shows whichever
+// character was picked for it at setup (falls back to "P"/"T" if somehow unset).
+function policeTokenGlyph() {
+  if (state.mode === "ai" && state.aiRole === "police") return AI_AVATAR;
+  return state.policeAvatar != null ? charEmoji(state.policeAvatar) : "P";
+}
+function thiefTokenGlyph() {
+  if (state.mode === "ai" && state.aiRole === "thief") return AI_AVATAR;
+  return state.thiefAvatar != null ? charEmoji(state.thiefAvatar) : "T";
 }
 
 function currentReachableTiles() {
@@ -446,7 +630,7 @@ function currentReachableTiles() {
 // ---------- HUD ----------
 
 function activeName() {
-  if (state.mode === "ai") return "You";
+  if (state.mode === "ai") return state.turn === state.playerRole ? state.playerName || "You" : "AI";
   return state.turn === "police" ? state.policeName : state.thiefName;
 }
 
@@ -517,7 +701,7 @@ function renderHud() {
       ? "Jump armed, timer frozen — click a highlighted tile up to 4 away."
       : "Click a highlighted tile to move up to 2 tiles.";
   } else {
-    addPowerButton("Stopper", "Freeze the police for their next turn. Recharges in 5 moves.", "stopper", () => usePower("stopper"));
+    addPowerButton("Stopper", "Take your turn twice in a row. Recharges in 5 moves.", "stopper", () => usePower("stopper"));
     addPowerButton("Teleport", "Jump to a far tile on the board. Recharges in 5 moves.", "teleport", () => armAction("teleport"));
     hintEl.textContent = state.pendingAction === "teleport"
       ? "Teleport armed, timer frozen — click any far highlighted tile."
@@ -662,9 +846,10 @@ function actPower(role, kind) {
 
   if (kind === "stopper") {
     startCooldown("stopper");
-    state.skipPoliceTurn = true;
-    logMessage("Stopper deployed — police will freeze on their next turn.");
-    return advanceTurn();
+    state.extraTurn = true;
+    logMessage("Stopper deployed — move again after this one!");
+    render();
+    return;
   }
 }
 
@@ -699,22 +884,25 @@ function checkCapture() {
 }
 
 function advanceTurn() {
-  tickCooldowns(state.turn); // the side that just finished gets one move closer to recharging
-  state.turn = state.turn === "thief" ? "police" : "thief";
-  state.turnSecondsLeft = TURN_SECONDS;
+  const actingRole = state.turn;
+  tickCooldowns(actingRole); // the side that just finished gets one move closer to recharging
   // A fresh turn should never inherit a stale armed Jump/Teleport or its
   // frozen clock — e.g. if a power was armed but a different one used instead.
   state.pendingAction = null;
   state.timerPaused = false;
 
-  if (state.turn === "police" && state.skipPoliceTurn) {
-    state.skipPoliceTurn = false;
-    logMessage("Police are frozen this turn.");
-    state.turn = "thief";
-    state.turnSecondsLeft = TURN_SECONDS;
+  let turnChanged = true;
+  if (state.extraTurn) {
+    // Stopper: same side goes again, one time only — nothing to hand off.
+    state.extraTurn = false;
+    turnChanged = false;
+    logMessage(`${activeName()} moves again — Stopper!`);
+  } else {
+    state.turn = actingRole === "thief" ? "police" : "thief";
   }
+  state.turnSecondsLeft = TURN_SECONDS;
 
-  if (state.mode === "offline" && !state.over) {
+  if (state.mode === "offline" && turnChanged && !state.over) {
     beginPassScreen();
     return;
   }
@@ -857,8 +1045,8 @@ function aiThiefTurn() {
 
   if (seesPolice && dist <= 1 && powerReady("stopper") && Math.random() < diff.powerSkill) {
     startCooldown("stopper");
-    state.skipPoliceTurn = true;
-    logMessage("Thief jams the police radio with Stopper!");
+    state.extraTurn = true;
+    logMessage("Thief jams the police radio with Stopper — moving again!");
     return finishAiActionOnly();
   }
 
@@ -915,10 +1103,7 @@ function startClocks() {
   // previous one rather than trusting it to notice `state` changed under it.
   if (clockIntervalId !== null) clearInterval(clockIntervalId);
 
-  clockIntervalId = setInterval(() => {
-    tickClock();
-    if (typeof sendSnapshot === "function") sendSnapshot(); // keeps the online guest's clocks live
-  }, 1000);
+  clockIntervalId = setInterval(tickClock, 1000);
 }
 
 function tickClock() {
@@ -968,10 +1153,13 @@ function tickClock() {
     state.turnSecondsLeft--;
     if (state.turnSecondsLeft <= 0) {
       autoMoveTimeout();
-    } else {
-      updateTurnTimerEl();
+      return; // autoMoveTimeout resolves a move and re-renders on its own
     }
   }
+  // Rendering every tick (not just on moves) is what lets the turn-tick and
+  // match-low sounds fire, and — since render() also broadcasts a snapshot —
+  // is what keeps the online guest's clocks and sounds live every second.
+  render();
 }
 
 function updateClock() {

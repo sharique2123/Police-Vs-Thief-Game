@@ -64,11 +64,37 @@ with a real breadth-first search over the grid, not just straight-line
 math — so the logic is ready to extend with walls or obstacles later
 without changing how movement or vision is calculated.
 
+### Character select
+
+Before every match (AI, offline, and online) you pick one of 5 characters —
+Cat, Fox, Penguin, Bear, or Panda — as your avatar, and enter a name, then
+join/start. Swipe left or right on the character, or tap the ‹ › arrows.
+The same 5 characters work whichever side you end up playing; in offline
+mode each of the two players picks their own and keeps it even after roles
+swap for round 2. The AI opponent always shows as 🤖, not a pickable
+character.
+
 ### Powers (rechargeable)
 
 Every power comes back **5 moves after you use it** — five of your own moves,
 counted after the turn you used it on. The dashboard shows each item as
 `ready` or `recharging · N`. This applies in all three modes.
+
+**Stopper** (Thief) no longer freezes the Police — it lets the Thief **take
+their turn twice in a row**: use it, then move, then move again immediately
+before it becomes the Police's turn.
+
+### Sound
+
+Every sound is synthesized on the fly with the Web Audio API — there are no
+audio files to load. A speaker icon in the top bar mutes/unmutes (saved in
+`localStorage`). Sounds play for: a piece moving, the 8s turn clock's last 3
+seconds, the match clock crossing 30 seconds left, each item having its own
+distinct sound when used (Indicator, Jump, Stopper, Teleport), Police
+catching the Thief, and the Thief winning on time. All of this works the
+same across AI, offline, and online — including on the online guest, which
+never runs its own game logic, by watching for the matching changes in the
+snapshots the host sends every second.
 
 **Thief**
 - **Stopper** — freezes the Police for their next turn. Costs your turn to use.
