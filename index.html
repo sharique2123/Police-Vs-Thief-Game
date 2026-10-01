@@ -11,7 +11,12 @@
 </head>
 <body>
 
-  <div class="wrap">
+  <!-- Clerk login gate: shown until the player signs in -->
+  <div id="auth-gate" style="display:flex;justify-content:center;align-items:center;min-height:100vh;">
+    <div id="sign-in"></div>
+  </div>
+
+  <div class="wrap" id="game-wrap" style="display:none">
 
     <header class="topbar">
       <div class="brand">
@@ -19,6 +24,7 @@
         <span class="brand-text">GRID PURSUIT <span class="brand-sub">police / thief</span></span>
       </div>
       <div class="topbar-right">
+        <div id="user-button"></div>
         <button class="sound-toggle" id="sound-toggle-btn" aria-label="Mute sound">🔊</button>
         <div class="clock" id="clock">05:00</div>
       </div>
@@ -340,5 +346,37 @@
   <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
   <script src="js/online.js"></script>
+
+  <!-- Clerk authentication -->
+  <script
+    defer
+    crossorigin="anonymous"
+    src="https://faithful-sturgeon-3448.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+    type="text/javascript"
+  ></script>
+
+  <script
+    defer
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_ZmFpdGhmdWwtc3R1cmdlb24tMzQ0OC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://faithful-sturgeon-3448.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+
+  <script>
+    window.addEventListener('load', async function () {
+      await Clerk.load({
+        ui: { ClerkUI: window.__internal_ClerkUICtor },
+      })
+
+      if (Clerk.isSignedIn) {
+        document.getElementById('auth-gate').style.display = 'none'
+        document.getElementById('game-wrap').style.display = ''
+        Clerk.mountUserButton(document.getElementById('user-button'))
+      } else {
+        Clerk.mountSignIn(document.getElementById('sign-in'))
+      }
+    })
+  </script>
 </body>
 </html>
