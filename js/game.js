@@ -67,6 +67,7 @@ const onlineJoinScreen = document.getElementById("online-join-screen");
 const gameScreen = document.getElementById("game-screen");
 const roundResultScreen = document.getElementById("round-result-screen");
 const resultScreen = document.getElementById("result-screen");
+const statsScreen = document.getElementById("stats-screen");
 
 const boardEl = document.getElementById("board");
 const clockEl = document.getElementById("clock");
@@ -231,6 +232,7 @@ const SCREENS = {
   game: gameScreen,
   roundResult: roundResultScreen,
   result: resultScreen,
+  stats: statsScreen,
 };
 
 function showScreen(name) {
@@ -1214,6 +1216,7 @@ function handleMatchEnd(captured) {
 function endGameAI(captured) {
   const winner = captured ? "police" : "thief";
   const playerWon = winner === state.playerRole;
+  if (playerWon && typeof Stats !== "undefined") Stats.recordAiWin(state.playerRole);
 
   showScreen("result");
   resultDetailsEl.hidden = true;
@@ -1288,6 +1291,13 @@ function showFinalOfflineResult() {
     resultTitle.textContent = "It's a draw";
     resultTitle.className = "draw";
     resultDesc.textContent = "Neither of you caught the other as Police within the time limit.";
+  }
+
+  // Record one online match (win/loss/draw, from *this* device's own player)
+  // exactly once, after both rounds — never per round.
+  if (state.mode === "online" && typeof Stats !== "undefined") {
+    const result = !winner ? "draw" : winner.name === net.myName ? "win" : "loss";
+    Stats.recordOnlineMatch(result);
   }
 
   for (const p of [a, b]) {

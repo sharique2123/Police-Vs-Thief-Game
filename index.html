@@ -25,6 +25,7 @@
       </div>
       <div class="topbar-right">
         <div id="user-button"></div>
+        <button class="sound-toggle" id="stats-btn" title="Your stats" aria-label="Your stats">📊</button>
         <button class="sound-toggle" id="sound-toggle-btn" aria-label="Mute sound">🔊</button>
         <div class="clock" id="clock">05:00</div>
       </div>
@@ -52,6 +53,43 @@
           <span class="mode-name">Online · 2 Player</span>
           <span class="mode-desc">Host a room or join with a code. Play a friend on their own device.</span>
         </button>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="panel setup" id="stats-screen" hidden>
+      <h1>Your stats</h1>
+      <p class="stats-empty lede">Sign in to start tracking your stats.</p>
+      <div class="stats-body" hidden>
+        <p class="section-label">Online · 2 Player</p>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-online-matches">0</span>
+            <span class="stat-label">Total matches</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-online-wins">0</span>
+            <span class="stat-label">Total wins</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-online-losses">0</span>
+            <span class="stat-label">Total losses</span>
+          </div>
+        </div>
+        <p class="section-label">Vs AI</p>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-ai-police">0</span>
+            <span class="stat-label">Wins as Police</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-ai-thief">0</span>
+            <span class="stat-label">Wins as Thief</span>
+          </div>
+        </div>
+      </div>
+      <div class="setup-actions">
+        <button class="btn-ghost" id="stats-back-btn">← Back</button>
       </div>
     </section>
 
@@ -346,6 +384,7 @@
   <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
   <script src="js/online.js"></script>
+  <script src="js/stats.js"></script>
 
   <!-- Clerk authentication -->
   <script
@@ -365,17 +404,38 @@
 
   <script>
     window.addEventListener('load', async function () {
-      await Clerk.load({
-        ui: { ClerkUI: window.__internal_ClerkUICtor },
-      })
+      try {
+        await Clerk.load({
+          ui: { ClerkUI: window.__internal_ClerkUICtor },
+        })
+      } catch (err) {
+        console.error('Clerk failed to load — sign-in is unavailable right now.', err)
+        document.getElementById('sign-in').textContent =
+          "Couldn't reach the sign-in service. Check your connection and reload the page."
+        return
+      }
 
       if (Clerk.isSignedIn) {
         document.getElementById('auth-gate').style.display = 'none'
         document.getElementById('game-wrap').style.display = ''
         Clerk.mountUserButton(document.getElementById('user-button'))
+        Stats.init(Clerk.user)
       } else {
         Clerk.mountSignIn(document.getElementById('sign-in'))
       }
+
+      // Keep stats wired up if Clerk's signed-in state changes later without
+      // a full page reload (e.g. finishing sign-in from the embedded widget).
+      Clerk.addListener(({ user }) => {
+        if (user && document.getElementById('game-wrap').style.display === 'none') {
+          document.getElementById('auth-gate').style.display = 'none'
+          document.getElementById('game-wrap').style.display = ''
+          Clerk.mountUserButton(document.getElementById('user-button'))
+          Stats.init(user)
+        } else if (!user) {
+          Stats.init(null)
+        }
+      })
     })
   </script>
 </body>

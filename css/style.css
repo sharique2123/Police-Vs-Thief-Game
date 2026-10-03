@@ -216,6 +216,42 @@ body {
 .setup-hint.err { color: var(--bad); }
 .good-ink { color: var(--good); }
 
+/* ---------- stats screen ---------- */
+
+.stats-empty { text-align: center; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto 22px;
+}
+
+.stat-card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.8rem;
+  color: var(--thief);
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 /* ---------- avatar picker ---------- */
 
 .avatar-pick {

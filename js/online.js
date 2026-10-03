@@ -171,6 +171,10 @@ function startOnlineRound(round) {
   const thiefName = hostIsPolice ? net.oppName : net.name;
   const policeAvatar = hostIsPolice ? net.avatar : net.oppAvatar;
   const thiefAvatar = hostIsPolice ? net.oppAvatar : net.avatar;
+  // The host's own *final* name for this round, post name-collision dedup —
+  // used (not net.name) when comparing the match result for stats, since
+  // net.name alone wouldn't reflect a trailing " (2)" added below.
+  net.myName = hostIsPolice ? policeName : thiefName;
   // Tell the guest first so it has a board ready before the first snapshot.
   netSend({ t: "roundStart", round, policeName, thiefName, policeAvatar, thiefAvatar, myRole: hostIsPolice ? "thief" : "police" });
   showScreen("game");
@@ -285,6 +289,7 @@ function setupGuestRound(m) {
   showScreen("game");
   resetClockDisplay();
   resetSoundBaseline();
+  net.myName = m.myRole === "police" ? m.policeName : m.thiefName;
   state = {
     mode: "online",
     myRole: m.myRole,

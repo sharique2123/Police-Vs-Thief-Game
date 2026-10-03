@@ -122,6 +122,75 @@ one of their two powers. Two different kinds of pause protect that:
 - Outside those radii, the opposing token is simply not drawn — you're
   playing on partial information, same as the AI is.
 
+## Sign-in & stats
+
+The game sits behind a [Clerk](https://clerk.com/) sign-in gate (added
+directly in `index.html`), and every signed-in player gets a stats page
+(the 📊 button in the top bar):
+
+- **Online · 2 Player** — total matches, total wins, total losses. These
+  count one full two-round match (not each individual round) — whoever
+  made the faster capture as Police across both rounds wins; if neither
+  of you captures, it's a draw (counted as a match, but not a win or loss).
+- **Vs AI** — wins as Police, wins as Thief. Only your own human-side wins
+  count; the AI's wins aren't tracked.
+
+**Stats are read client-side but can only ever be *written* by a server.**
+They live in the player's Clerk account under `publicMetadata` — readable
+from the browser, but writable only by something holding the Clerk *secret*
+key. That's `api/record-stat.js`, a small Vercel Function, and it's the only
+thing in the whole project allowed to change a stat. A player opening
+devtools and calling `Clerk.user.update(...)` directly can't touch
+`publicMetadata` at all — Clerk itself rejects it.
+
+The client (`js/stats.js`) never sends a number. It sends an *event name* —
+`"ai_win_police"`, `"online_match_win"`, etc. — and the server decides what
+that's worth (always exactly +1 to the relevant counter; see the `ACTIONS`
+table in `api/record-stat.js`). There's no field anywhere in the request for
+an amount, so there's nothing to tamper with into an arbitrary value.
+
+**What this does and doesn't protect against**, worth being honest about:
+it stops a player from editing *their own stat number* to whatever they
+want. It does **not** verify that a claimed win actually happened — in
+online mode, the host's browser is still the sole authority on who won,
+so a modified client could claim a false win just by hosting and reporting
+one. Closing that would mean running match logic on a server you control,
+which is a much bigger change than "secure the write." For a casual/friends
+project, that's a reasonable line to draw; see `api/record-stat.js`'s
+top comment for more.
+
+### Deploying the server piece (Vercel)
+
+The game was a pure static site before this; the one new requirement is
+somewhere that runs `api/` as serverless functions alongside the static
+files. [Vercel](https://vercel.com) does this with zero config — drop the
+project in, it auto-detects `api/*.js` as Functions and serves everything
+else as-is.
+
+1. `npm install` (installs `@clerk/backend`, used only by `api/record-stat.js`).
+2. In your Vercel project's **Settings → Environment Variables**, add:
+   - `CLERK_SECRET_KEY` — from the Clerk Dashboard → API Keys → **Secret key**
+     (never the publishable key, and never put this one in `index.html`).
+   - `ALLOWED_ORIGIN` — optional but recommended: your deployed URL(s),
+     comma-separated. Stops a session token from being lifted and replayed
+     against the endpoint from some other site. See `.env.example` for the
+     exact format, and `vercel dev` + `.env.local` if you want to run this
+     locally first.
+3. Deploy. `/api/record-stat` is live at the same origin as `index.html`,
+   which is why `js/stats.js` can just `fetch("/api/record-stat")` with no
+   base URL.
+
+If you'd rather use a different host, anything that runs a Node function
+on request works the same way — Netlify Functions and Cloudflare Pages
+Functions are the usual alternatives, just with a different folder
+convention than Vercel's `api/`.
+
+If you swap Clerk for your own auth later, everything stats-related funnels
+through `Stats.init()`, `Stats.recordAiWin()`, and `Stats.recordOnlineMatch()`
+in `js/stats.js` on the client, and through `api/record-stat.js` on the
+server — point those at whatever you use instead and the rest of the game
+doesn't need to change.
+
 ## Online play
 
 Online mode is peer-to-peer over WebRTC using [PeerJS](https://peerjs.com/)
@@ -146,13 +215,19 @@ TURN relay, so in rare cases two players may be unable to connect.
 
 ```
 police-vs-thief-game/
-├── index.html          # page shell, setup / game / result screens
+├── index.html          # page shell, setup / game / result screens, Clerk sign-in gate
 ├── css/
 │   └── style.css        # dark tactical theme, layout, board styling
 ├── js/
 │   ├── pathfinding.js   # BFS shortest-distance / shortest-path / vision helpers
+│   ├── sound.js          # Web Audio synth — every in-game sound, no audio files
 │   ├── game.js          # game state, rendering, turn loop, AI, timer
-│   └── online.js        # online mode: host/join, PeerJS networking, snapshots
+│   ├── online.js        # online mode: host/join, PeerJS networking, snapshots
+│   └── stats.js          # stats screen + client half of the secure stats write
+├── api/
+│   └── record-stat.js   # Vercel Function — the only thing allowed to write stats
+├── package.json          # one dependency (@clerk/backend) for api/record-stat.js
+├── .env.example          # env vars record-stat.js needs (copy into Vercel's settings)
 ├── LICENSE
 └── README.md
 ```
