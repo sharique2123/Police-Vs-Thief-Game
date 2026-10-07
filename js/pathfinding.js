@@ -8,7 +8,7 @@
  * check inside neighborsOf() and every function below still holds.
  */
 
-const GRID_SIZE = 10;
+const GRID_SIZE = 12;
 
 function inBounds(x, y) {
   return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE;

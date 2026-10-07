@@ -529,9 +529,14 @@ body {
 @media (max-width: 900px) {
   .game-area { grid-template-columns: 1fr; }
   .board-col { order: 1; }
-  .dash { order: 2; }
-  .hud { order: 3; }
+  /* Status + Powers come right after the board — those are what you need
+     every single turn. Item recharge states and the compass are useful but
+     not turn-critical, so they're pushed below instead of forcing a scroll
+     past them just to reach the Powers buttons. */
+  .hud { order: 2; }
+  .dash { order: 3; }
 }
+
 
 .board-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 
@@ -865,4 +870,42 @@ body {
   font-weight: 700;
   font-size: 2.6rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- mobile: everything turn-critical fits without scrolling ---------- */
+/* Placed at the end of the file on purpose: several rules here override
+   earlier base rules (.dash-block/.hud-block padding, .legend ul layout,
+   .power-row gap) on the same selectors — with equal specificity, source
+   order decides the winner, so these must come after those base rules. */
+@media (max-width: 640px) {
+  .board {
+    /* Leave more headroom below the board for Status + Powers too, not
+       just the board itself — that's the actual point of this breakpoint. */
+    width: min(100%, calc(100vh - 340px));
+    min-width: min(100%, 300px);
+  }
+
+  .dash-block, .hud-block { padding: 10px 14px; }
+  .dash-block h2, .hud-block h2 { font-size: 0.78rem; margin-bottom: 6px; }
+
+  /* "Your items" / "their items" side-by-side instead of stacked — the
+     single biggest vertical-space saving on a phone. */
+  .dash {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .dash-block:nth-child(1) { grid-column: 1 / -1; } /* Time remaining — full width */
+  .dash-block:nth-child(4) { grid-column: 1 / -1; } /* Proximity compass — full width */
+
+  .power-row { gap: 6px; }
+  .power-btn { padding: 8px 12px; }
+  .power-btn strong { font-size: 0.84rem; }
+  .power-btn span { font-size: 0.7rem; }
+
+  /* Legend is reference-only, never needed mid-turn — compact it into one
+     wrapping row of icons instead of a tall stacked list. */
+  .hud-block.legend { padding: 8px 14px; }
+  .hud-block.legend ul { flex-direction: row; flex-wrap: wrap; gap: 4px 14px; }
+  .hud-block.legend li { margin: 0; }
 }

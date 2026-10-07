@@ -16,6 +16,41 @@ const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 — easy
 const ROOM_CODE_LEN = 5;
 const JOIN_TIMEOUT_MS = 15000;
 
+// STUN alone (PeerJS's default — just Google's public STUN server) only
+// helps two browsers connect directly when both are behind reasonably
+// cooperative NATs/routers. That's why two players on the same network (or
+// similar simple setups) connect fine, but two players on different,
+// stricter networks (mobile data, campus wifi, some corporate firewalls)
+// often can't reach each other at all: STUN helps you discover an address,
+// it can't relay traffic when a direct path genuinely isn't possible.
+//
+// The extra public STUN servers below spread that discovery step across a
+// few providers instead of one, which helps somewhat. They do NOT fully
+// fix the "far apart, strict NAT on at least one side" case — that needs a
+// TURN server, which relays traffic when a direct connection can't be made.
+// There's no truly public TURN server (relaying bandwidth costs money, so
+// every provider requires an account), so wiring one in means signing up
+// for a free tier yourself and dropping the credentials in below:
+//
+//   1. Create a free account at https://www.metered.ca/tools/openrelay/
+//      (or Twilio, Xirsys — any WebRTC TURN provider works the same way)
+//   2. Copy the iceServers array it gives you
+//   3. Replace TURN_SERVERS below with it
+//
+// Until that's filled in, TURN_SERVERS stays empty and this falls back to
+// STUN-only — which is exactly today's behavior, just with extra STUN
+// servers for a bit more resilience.
+const TURN_SERVERS = [
+  // { urls: "turn:YOUR_PROVIDER_HOST:80", username: "...", credential: "..." },
+];
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun.relay.metered.ca:80" },
+  ...TURN_SERVERS,
+];
+const PEER_OPTIONS = { config: { iceServers: ICE_SERVERS } };
+
 const hostNameInput = document.getElementById("host-name");
 const joinNameInput = document.getElementById("join-name");
 const joinCodeInput = document.getElementById("join-code");
@@ -124,7 +159,7 @@ function hostCreateRoom() {
 
 function createHostPeer(attempt) {
   const code = randomRoomCode();
-  const peer = new Peer(ROOM_PREFIX + code);
+  const peer = new Peer(ROOM_PREFIX + code, PEER_OPTIONS);
   net.peer = peer;
 
   peer.on("open", () => {
@@ -252,7 +287,7 @@ function joinRoom() {
   net.avatar = joinAvatarPicker.get();
   setStatus(joinStatusEl, "Connecting…", null);
 
-  const peer = new Peer();
+  const peer = new Peer(PEER_OPTIONS);
   net.peer = peer;
   let done = false;
   const fail = (msg) => {

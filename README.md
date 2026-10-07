@@ -1,6 +1,6 @@
 # Grid Pursuit — Police vs Thief
 
-A turn-based chase on an 10×10 grid, built to showcase **shortest-distance
+A turn-based chase on a 12×12 grid, built to showcase **shortest-distance
 pathfinding (BFS)**: the AI opponent — whichever side you don't play —
 always plans its moves using shortest-path search across the board.
 
@@ -56,7 +56,7 @@ capture, the match is a draw.
 | | Police | Thief |
 |---|---|---|
 | Movement per turn | 2 tiles | 1 tile |
-| Vision radius | 3 tiles | 5 tiles |
+| Vision radius | 1 tile | 3 tiles |
 | Win condition | Step onto the Thief's tile | Survive the 5-minute timer |
 
 Movement is 4-directional (up/down/left/right) and distances are computed
@@ -117,8 +117,8 @@ one of their two powers. Two different kinds of pause protect that:
 
 ### Fog of war
 
-- The Police only see the Thief's token when the Thief is within 3 tiles.
-- The Thief only sees the Police's token when the Police is within 5 tiles.
+- The Police only see the Thief's token when the Thief is within 1 tile (adjacent or on top of them).
+- The Thief only sees the Police's token when the Police is within 3 tiles.
 - Outside those radii, the opposing token is simply not drawn — you're
   playing on partial information, same as the AI is.
 
@@ -207,9 +207,32 @@ is the host's PeerJS id.
 - If either player disconnects mid-match, the match ends and the other player
   returns to the menu.
 
-Needs an internet connection (for PeerJS and its free signaling server). Some
-strict networks/NATs block direct WebRTC connections; the default setup has no
-TURN relay, so in rare cases two players may be unable to connect.
+Needs an internet connection (for PeerJS and its free signaling server).
+
+**"Works with a friend nearby, fails with one far away" is a known
+limitation, not a bug.** Two browsers connecting directly over WebRTC need
+to find a path through both players' routers/NATs. Google's free STUN
+servers (used by default, plus a couple more now configured in
+`js/online.js` for redundancy) can usually find that path when both players
+are on simple, cooperative networks — often the case when you're testing
+with someone nearby. They can't when either side is behind a stricter NAT
+(mobile data, campus wifi, some corporate firewalls) — which is a much more
+likely combination the further apart two players' networks are.
+
+The real fix is a **TURN server**, which relays traffic when a direct
+connection can't be made. There's no free option that just works with zero
+setup — relaying bandwidth costs the provider money, so all of them require
+an account — but `js/online.js` has a `TURN_SERVERS` array ready to receive
+one. To wire it up:
+
+1. Create a free account at a WebRTC TURN provider — e.g.
+   [Metered](https://www.metered.ca/tools/openrelay/), Twilio, or Xirsys
+2. Copy the `iceServers` credentials it gives you
+3. Paste them into `TURN_SERVERS` in `js/online.js`
+
+Until that's filled in, it falls back to STUN-only, which is today's
+behavior — fine for players on similar/nearby networks, unreliable across
+very different ones.
 
 ## Project structure
 

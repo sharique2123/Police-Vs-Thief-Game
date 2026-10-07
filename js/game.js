@@ -1,11 +1,11 @@
 /**
  * game.js
- * Police vs Thief — 10x10 grid pursuit.
+ * Police vs Thief — 12x12 grid pursuit.
  * Requires pathfinding.js to be loaded first.
  */
 
-const POLICE_VISION = 3;   // Chebyshev radius — police only "sees" the thief this close
-const THIEF_VISION = 5;    // Chebyshev radius — thief sees the police this far
+const POLICE_VISION = 1;   // Chebyshev radius — police only "sees" the thief this close
+const THIEF_VISION = 3;    // Chebyshev radius — thief sees the police this far
 const POLICE_STEPS = 2;
 const POLICE_JUMP_STEPS = 4;
 const THIEF_STEPS = 1;
@@ -241,6 +241,12 @@ function showScreen(name) {
   }
   passOverlayEl.hidden = true;
   if (name !== "game") stopClocks();
+  // Screens are shown/hidden in place (not real page navigations), so the
+  // browser never resets scroll on its own — without this, scrolling down a
+  // tall setup screen to tap its Start/Join button would carry that same
+  // scroll offset straight into the next screen, e.g. landing mid-board
+  // instead of at the top. Every screen should always open at the top.
+  window.scrollTo(0, 0);
 }
 
 // Stops any running match interval and marks the current match as over.
